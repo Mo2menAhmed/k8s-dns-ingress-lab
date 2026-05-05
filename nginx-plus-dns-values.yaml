@@ -1,0 +1,39 @@
+controller:
+  kind: daemonset
+  nginxplus: true
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+
+  image:
+    repository: private-registry.nginx.com/nginx-ic/nginx-plus-ingress
+    tag: 5.4.1
+
+  serviceAccount:
+    imagePullSecretName: regcred
+
+  mgmt:
+    licenseTokenSecretName: nplus-license
+
+  enableCustomResources: true
+
+  globalConfiguration:
+    create: true
+    spec:
+      listeners:
+      - name: dns-tcp
+        port: 53
+        protocol: TCP
+      - name: dns-udp
+        port: 53
+        protocol: UDP
+
+  customPorts:
+  - name: dns-tcp
+    containerPort: 53
+    protocol: TCP
+  - name: dns-udp
+    containerPort: 53
+    protocol: UDP
+
+  service:
+    create: false

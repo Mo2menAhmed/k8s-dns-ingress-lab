@@ -1,0 +1,277 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Length 2434 >>
+stream
+BT /F2 20.0 Tf 54.0 738.0 Td (Customer Guide: Install NGINX Plus Ingress for) Tj ET
+BT /F2 20.0 Tf 54.0 714.0 Td (Kubernetes DNS) Tj ET
+BT /F1 10.5 Tf 54.0 677.0 Td (This guide installs only the F5 NGINX Ingress Controller with NGINX Plus. It assumes Kubernetes) Tj ET
+BT /F1 10.5 Tf 54.0 663.0 Td (is already running and the DNS service is already deployed.) Tj ET
+BT /F1 10.5 Tf 54.0 640.0 Td (The goal is to expose an existing Kubernetes DNS service on TCP and UDP port 53 using F5 NGINX) Tj ET
+BT /F1 10.5 Tf 54.0 626.0 Td (`GlobalConfiguration` and `TransportServer` resources.) Tj ET
+BT /F2 14.0 Tf 54.0 595.0 Td (Assumptions) Tj ET
+BT /F1 10.5 Tf 54.0 570.0 Td (- Kubernetes cluster is ready.) Tj ET
+BT /F1 10.5 Tf 54.0 556.0 Td (- `kubectl` is configured for the target cluster.) Tj ET
+BT /F1 10.5 Tf 54.0 542.0 Td (- Helm is installed.) Tj ET
+BT /F1 10.5 Tf 54.0 528.0 Td (- The DNS backend service already exists.) Tj ET
+BT /F1 10.5 Tf 54.0 514.0 Td (- The customer has a valid NGINX Plus JWT license token.) Tj ET
+BT /F1 10.5 Tf 54.0 500.0 Td (- The cluster nodes can pull from `private-registry.nginx.com`.) Tj ET
+BT /F1 10.5 Tf 54.0 481.0 Td (Example backend used in this guide:) Tj ET
+BT /F3 7.5 Tf 62.0 455.0 Td (DNS namespace: dns-lab) Tj ET
+BT /F3 7.5 Tf 62.0 445.0 Td (DNS service:   coredns) Tj ET
+BT /F3 7.5 Tf 62.0 435.0 Td (DNS port:      53) Tj ET
+BT /F1 10.5 Tf 54.0 412.0 Td (If the customer DNS service has different names, replace:) Tj ET
+BT /F3 7.5 Tf 62.0 386.0 Td (dns-lab/coredns:53) Tj ET
+BT /F1 10.5 Tf 54.0 363.0 Td (with:) Tj ET
+BT /F3 7.5 Tf 62.0 337.0 Td (<dns-namespace>/<dns-service>:<dns-port>) Tj ET
+BT /F2 14.0 Tf 54.0 306.0 Td (1. Verify the Existing DNS Service) Tj ET
+BT /F3 7.5 Tf 62.0 278.0 Td (kubectl -n dns-lab get svc coredns) Tj ET
+BT /F3 7.5 Tf 62.0 268.0 Td (kubectl -n dns-lab get endpoints coredns) Tj ET
+BT /F1 10.5 Tf 54.0 245.0 Td (The service must expose both protocols:) Tj ET
+BT /F3 7.5 Tf 62.0 219.0 Td (53/TCP) Tj ET
+BT /F3 7.5 Tf 62.0 209.0 Td (53/UDP) Tj ET
+BT /F2 14.0 Tf 54.0 178.0 Td (2. Create NGINX Plus Secrets) Tj ET
+BT /F1 10.5 Tf 54.0 153.0 Td (Save the NGINX Plus JWT locally as:) Tj ET
+BT /F3 7.5 Tf 62.0 127.0 Td (license.jwt) Tj ET
+BT /F1 10.5 Tf 54.0 104.0 Td (Create the NGINX namespace:) Tj ET
+BT /F3 7.5 Tf 62.0 78.0 Td (kubectl create namespace nginx-ingress --dry-run=client -o yaml | kubectl apply -f -) Tj ET
+BT /F1 8 Tf 286.0 28 Td (Page 1) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 3159 >>
+stream
+BT /F1 10.5 Tf 54.0 738.0 Td (Create the NGINX Plus license secret:) Tj ET
+BT /F3 7.5 Tf 62.0 712.0 Td (kubectl -n nginx-ingress create secret generic nplus-license \\) Tj ET
+BT /F3 7.5 Tf 62.0 702.0 Td (  --from-file=license.jwt=./license.jwt \\) Tj ET
+BT /F3 7.5 Tf 62.0 692.0 Td (  --type=nginx.com/license) Tj ET
+BT /F1 10.5 Tf 54.0 669.0 Td (Create the private registry pull secret:) Tj ET
+BT /F3 7.5 Tf 62.0 643.0 Td (kubectl -n nginx-ingress create secret docker-registry regcred \\) Tj ET
+BT /F3 7.5 Tf 62.0 633.0 Td (  --docker-server=private-registry.nginx.com \\) Tj ET
+BT /F3 7.5 Tf 62.0 623.0 Td (  --docker-username="$\(cat ./license.jwt\)" \\) Tj ET
+BT /F3 7.5 Tf 62.0 613.0 Td (  --docker-password=none) Tj ET
+BT /F1 10.5 Tf 54.0 590.0 Td (Do not commit or share `license.jwt`.) Tj ET
+BT /F2 14.0 Tf 54.0 559.0 Td (3. Create Helm Values) Tj ET
+BT /F1 10.5 Tf 54.0 534.0 Td (Create this file:) Tj ET
+BT /F3 7.5 Tf 62.0 508.0 Td (nginx-plus-dns-values.yaml) Tj ET
+BT /F1 10.5 Tf 54.0 485.0 Td (Use this content:) Tj ET
+BT /F3 7.5 Tf 62.0 459.0 Td (controller:) Tj ET
+BT /F3 7.5 Tf 62.0 449.0 Td (  kind: daemonset) Tj ET
+BT /F3 7.5 Tf 62.0 439.0 Td (  nginxplus: true) Tj ET
+BT /F3 7.5 Tf 62.0 429.0 Td (  hostNetwork: true) Tj ET
+BT /F3 7.5 Tf 62.0 419.0 Td (  dnsPolicy: ClusterFirstWithHostNet) Tj ET
+BT /F3 7.5 Tf 62.0 409.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 399.0 Td (  image:) Tj ET
+BT /F3 7.5 Tf 62.0 389.0 Td (    repository: private-registry.nginx.com/nginx-ic/nginx-plus-ingress) Tj ET
+BT /F3 7.5 Tf 62.0 379.0 Td (    tag: 5.4.1) Tj ET
+BT /F3 7.5 Tf 62.0 369.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 359.0 Td (  serviceAccount:) Tj ET
+BT /F3 7.5 Tf 62.0 349.0 Td (    imagePullSecretName: regcred) Tj ET
+BT /F3 7.5 Tf 62.0 339.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 329.0 Td (  mgmt:) Tj ET
+BT /F3 7.5 Tf 62.0 319.0 Td (    licenseTokenSecretName: nplus-license) Tj ET
+BT /F3 7.5 Tf 62.0 309.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 299.0 Td (  enableCustomResources: true) Tj ET
+BT /F3 7.5 Tf 62.0 289.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 279.0 Td (  globalConfiguration:) Tj ET
+BT /F3 7.5 Tf 62.0 269.0 Td (    create: true) Tj ET
+BT /F3 7.5 Tf 62.0 259.0 Td (    spec:) Tj ET
+BT /F3 7.5 Tf 62.0 249.0 Td (      listeners:) Tj ET
+BT /F3 7.5 Tf 62.0 239.0 Td (      - name: dns-tcp) Tj ET
+BT /F3 7.5 Tf 62.0 229.0 Td (        port: 53) Tj ET
+BT /F3 7.5 Tf 62.0 219.0 Td (        protocol: TCP) Tj ET
+BT /F3 7.5 Tf 62.0 209.0 Td (      - name: dns-udp) Tj ET
+BT /F3 7.5 Tf 62.0 199.0 Td (        port: 53) Tj ET
+BT /F3 7.5 Tf 62.0 189.0 Td (        protocol: UDP) Tj ET
+BT /F3 7.5 Tf 62.0 179.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 169.0 Td (  customPorts:) Tj ET
+BT /F3 7.5 Tf 62.0 159.0 Td (  - name: dns-tcp) Tj ET
+BT /F3 7.5 Tf 62.0 149.0 Td (    containerPort: 53) Tj ET
+BT /F3 7.5 Tf 62.0 139.0 Td (    protocol: TCP) Tj ET
+BT /F3 7.5 Tf 62.0 129.0 Td (  - name: dns-udp) Tj ET
+BT /F3 7.5 Tf 62.0 119.0 Td (    containerPort: 53) Tj ET
+BT /F3 7.5 Tf 62.0 109.0 Td (    protocol: UDP) Tj ET
+BT /F3 7.5 Tf 62.0 99.0 Td () Tj ET
+BT /F3 7.5 Tf 62.0 89.0 Td (  service:) Tj ET
+BT /F3 7.5 Tf 62.0 79.0 Td (    create: false) Tj ET
+BT /F1 8 Tf 286.0 28 Td (Page 2) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2991 >>
+stream
+BT /F1 10.5 Tf 54.0 738.0 Td (Notes:) Tj ET
+BT /F1 10.5 Tf 54.0 715.0 Td (- `hostNetwork: true` binds NGINX directly on the Kubernetes node network.) Tj ET
+BT /F1 10.5 Tf 54.0 701.0 Td (- Port `53` must be free on the nodes where this DaemonSet runs.) Tj ET
+BT /F1 10.5 Tf 54.0 687.0 Td (- If another DNS service is already listening on node port `53`, this deployment will fail.) Tj ET
+BT /F2 14.0 Tf 54.0 660.0 Td (4. Install NGINX Plus Ingress Controller) Tj ET
+BT /F3 7.5 Tf 62.0 632.0 Td (helm upgrade --install nginx-ingress oci://ghcr.io/nginx/charts/nginx-ingress \\) Tj ET
+BT /F3 7.5 Tf 62.0 622.0 Td (  --version 2.5.1 \\) Tj ET
+BT /F3 7.5 Tf 62.0 612.0 Td (  --namespace nginx-ingress \\) Tj ET
+BT /F3 7.5 Tf 62.0 602.0 Td (  -f nginx-plus-dns-values.yaml) Tj ET
+BT /F1 10.5 Tf 54.0 579.0 Td (Wait for the controller:) Tj ET
+BT /F3 7.5 Tf 62.0 553.0 Td (kubectl -n nginx-ingress wait \\) Tj ET
+BT /F3 7.5 Tf 62.0 543.0 Td (  --for=condition=Ready pod \\) Tj ET
+BT /F3 7.5 Tf 62.0 533.0 Td (  -l app.kubernetes.io/name=nginx-ingress \\) Tj ET
+BT /F3 7.5 Tf 62.0 523.0 Td (  --timeout=600s) Tj ET
+BT /F1 10.5 Tf 54.0 500.0 Td (Verify:) Tj ET
+BT /F3 7.5 Tf 62.0 474.0 Td (kubectl -n nginx-ingress get pods) Tj ET
+BT /F3 7.5 Tf 62.0 464.0 Td (kubectl -n nginx-ingress get globalconfiguration) Tj ET
+BT /F3 7.5 Tf 62.0 454.0 Td (helm -n nginx-ingress list) Tj ET
+BT /F2 14.0 Tf 54.0 423.0 Td (5. Create TransportServer Resources) Tj ET
+BT /F1 10.5 Tf 54.0 398.0 Td (Create this file:) Tj ET
+BT /F3 7.5 Tf 62.0 372.0 Td (dns-transportservers.yaml) Tj ET
+BT /F1 10.5 Tf 54.0 349.0 Td (Use this content:) Tj ET
+BT /F3 7.5 Tf 62.0 323.0 Td (apiVersion: k8s.nginx.org/v1) Tj ET
+BT /F3 7.5 Tf 62.0 313.0 Td (kind: TransportServer) Tj ET
+BT /F3 7.5 Tf 62.0 303.0 Td (metadata:) Tj ET
+BT /F3 7.5 Tf 62.0 293.0 Td (  name: dns-tcp) Tj ET
+BT /F3 7.5 Tf 62.0 283.0 Td (  namespace: dns-lab) Tj ET
+BT /F3 7.5 Tf 62.0 273.0 Td (spec:) Tj ET
+BT /F3 7.5 Tf 62.0 263.0 Td (  listener:) Tj ET
+BT /F3 7.5 Tf 62.0 253.0 Td (    name: dns-tcp) Tj ET
+BT /F3 7.5 Tf 62.0 243.0 Td (    protocol: TCP) Tj ET
+BT /F3 7.5 Tf 62.0 233.0 Td (  upstreams:) Tj ET
+BT /F3 7.5 Tf 62.0 223.0 Td (  - name: dns) Tj ET
+BT /F3 7.5 Tf 62.0 213.0 Td (    service: coredns) Tj ET
+BT /F3 7.5 Tf 62.0 203.0 Td (    port: 53) Tj ET
+BT /F3 7.5 Tf 62.0 193.0 Td (  action:) Tj ET
+BT /F3 7.5 Tf 62.0 183.0 Td (    pass: dns) Tj ET
+BT /F3 7.5 Tf 62.0 173.0 Td (---) Tj ET
+BT /F3 7.5 Tf 62.0 163.0 Td (apiVersion: k8s.nginx.org/v1) Tj ET
+BT /F3 7.5 Tf 62.0 153.0 Td (kind: TransportServer) Tj ET
+BT /F3 7.5 Tf 62.0 143.0 Td (metadata:) Tj ET
+BT /F3 7.5 Tf 62.0 133.0 Td (  name: dns-udp) Tj ET
+BT /F3 7.5 Tf 62.0 123.0 Td (  namespace: dns-lab) Tj ET
+BT /F3 7.5 Tf 62.0 113.0 Td (spec:) Tj ET
+BT /F3 7.5 Tf 62.0 103.0 Td (  listener:) Tj ET
+BT /F3 7.5 Tf 62.0 93.0 Td (    name: dns-udp) Tj ET
+BT /F3 7.5 Tf 62.0 83.0 Td (    protocol: UDP) Tj ET
+BT /F3 7.5 Tf 62.0 73.0 Td (  upstreams:) Tj ET
+BT /F1 8 Tf 286.0 28 Td (Page 3) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 2486 >>
+stream
+BT /F3 7.5 Tf 62.0 738.0 Td (  - name: dns) Tj ET
+BT /F3 7.5 Tf 62.0 728.0 Td (    service: coredns) Tj ET
+BT /F3 7.5 Tf 62.0 718.0 Td (    port: 53) Tj ET
+BT /F3 7.5 Tf 62.0 708.0 Td (  upstreamParameters:) Tj ET
+BT /F3 7.5 Tf 62.0 698.0 Td (    udpRequests: 1) Tj ET
+BT /F3 7.5 Tf 62.0 688.0 Td (    udpResponses: 1) Tj ET
+BT /F3 7.5 Tf 62.0 678.0 Td (  action:) Tj ET
+BT /F3 7.5 Tf 62.0 668.0 Td (    pass: dns) Tj ET
+BT /F1 10.5 Tf 54.0 645.0 Td (Apply it:) Tj ET
+BT /F3 7.5 Tf 62.0 619.0 Td (kubectl apply -f dns-transportservers.yaml) Tj ET
+BT /F2 14.0 Tf 54.0 588.0 Td (6. Verify TransportServer Status) Tj ET
+BT /F3 7.5 Tf 62.0 560.0 Td (kubectl -n dns-lab get transportserver) Tj ET
+BT /F3 7.5 Tf 62.0 550.0 Td (kubectl -n dns-lab describe transportserver dns-tcp) Tj ET
+BT /F3 7.5 Tf 62.0 540.0 Td (kubectl -n dns-lab describe transportserver dns-udp) Tj ET
+BT /F1 10.5 Tf 54.0 517.0 Td (Expected status:) Tj ET
+BT /F3 7.5 Tf 62.0 491.0 Td (NAME      STATE   REASON) Tj ET
+BT /F3 7.5 Tf 62.0 481.0 Td (dns-tcp   Valid   AddedOrUpdated) Tj ET
+BT /F3 7.5 Tf 62.0 471.0 Td (dns-udp   Valid   AddedOrUpdated) Tj ET
+BT /F2 14.0 Tf 54.0 440.0 Td (7. Test DNS) Tj ET
+BT /F1 10.5 Tf 54.0 415.0 Td (Set the node IP where NGINX Plus is running:) Tj ET
+BT /F3 7.5 Tf 62.0 389.0 Td (NODE_IP=<nginx-ingress-node-ip>) Tj ET
+BT /F1 10.5 Tf 54.0 366.0 Td (Test UDP:) Tj ET
+BT /F3 7.5 Tf 62.0 340.0 Td (dig @"$NODE_IP" -p 53 app.example.local +short) Tj ET
+BT /F3 7.5 Tf 62.0 330.0 Td (dig @"$NODE_IP" -p 53 api.example.local +short) Tj ET
+BT /F1 10.5 Tf 54.0 307.0 Td (Test TCP:) Tj ET
+BT /F3 7.5 Tf 62.0 281.0 Td (dig @"$NODE_IP" -p 53 app.example.local +tcp +short) Tj ET
+BT /F3 7.5 Tf 62.0 271.0 Td (dig @"$NODE_IP" -p 53 api.example.local +tcp +short) Tj ET
+BT /F1 10.5 Tf 54.0 248.0 Td (Expected demo answers:) Tj ET
+BT /F3 7.5 Tf 62.0 222.0 Td (app.example.local -> 10.10.10.10) Tj ET
+BT /F3 7.5 Tf 62.0 212.0 Td (api.example.local -> 10.10.10.20) Tj ET
+BT /F2 14.0 Tf 54.0 181.0 Td (8. Troubleshooting) Tj ET
+BT /F1 10.5 Tf 54.0 156.0 Td (Check image pull and license issues:) Tj ET
+BT /F3 7.5 Tf 62.0 130.0 Td (kubectl -n nginx-ingress get events --sort-by=.lastTimestamp) Tj ET
+BT /F3 7.5 Tf 62.0 120.0 Td (kubectl -n nginx-ingress describe pod -l app.kubernetes.io/name=nginx-ingress) Tj ET
+BT /F3 7.5 Tf 62.0 110.0 Td (kubectl -n nginx-ingress get secret nplus-license regcred) Tj ET
+BT /F1 10.5 Tf 54.0 87.0 Td (Check NGINX Plus logs:) Tj ET
+BT /F1 8 Tf 286.0 28 Td (Page 4) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 1973 >>
+stream
+BT /F3 7.5 Tf 62.0 738.0 Td (kubectl -n nginx-ingress logs -l app.kubernetes.io/name=nginx-ingress --tail=100) Tj ET
+BT /F1 10.5 Tf 54.0 715.0 Td (Check listener configuration:) Tj ET
+BT /F3 7.5 Tf 62.0 689.0 Td (kubectl -n nginx-ingress get globalconfiguration nginx-ingress-controller -o yaml) Tj ET
+BT /F1 10.5 Tf 54.0 666.0 Td (Check TransportServer configuration:) Tj ET
+BT /F3 7.5 Tf 62.0 640.0 Td (kubectl -n dns-lab get transportserver -o yaml) Tj ET
+BT /F1 10.5 Tf 54.0 617.0 Td (Check the DNS backend:) Tj ET
+BT /F3 7.5 Tf 62.0 591.0 Td (kubectl -n dns-lab get pods) Tj ET
+BT /F3 7.5 Tf 62.0 581.0 Td (kubectl -n dns-lab get svc coredns) Tj ET
+BT /F3 7.5 Tf 62.0 571.0 Td (kubectl -n dns-lab get endpoints coredns) Tj ET
+BT /F1 10.5 Tf 54.0 548.0 Td (Common issues:) Tj ET
+BT /F1 10.5 Tf 54.0 525.0 Td (- Port `53` is already used on the node.) Tj ET
+BT /F1 10.5 Tf 54.0 511.0 Td (- The NGINX Plus JWT is expired or invalid.) Tj ET
+BT /F1 10.5 Tf 54.0 497.0 Td (- The cluster cannot reach `private-registry.nginx.com`.) Tj ET
+BT /F1 10.5 Tf 54.0 483.0 Td (- The DNS service name or namespace in the TransportServer is wrong.) Tj ET
+BT /F1 10.5 Tf 54.0 469.0 Td (- The DNS service does not expose both TCP and UDP port `53`.) Tj ET
+BT /F2 14.0 Tf 54.0 442.0 Td (References) Tj ET
+BT /F1 10.5 Tf 54.0 417.0 Td (- F5 NGINX Ingress Controller Helm install:) Tj ET
+BT /F1 10.5 Tf 54.0 403.0 Td (https://docs.nginx.com/nginx-ingress-controller/install/helm/) Tj ET
+BT /F1 10.5 Tf 54.0 385.0 Td (- F5 NGINX TransportServer resources:) Tj ET
+BT /F1 10.5 Tf 54.0 371.0 Td (https://docs.nginx.com/nginx-ingress-controller/configuration/transportserver-resource/) Tj ET
+BT /F1 10.5 Tf 54.0 353.0 Td (- F5 NGINX GlobalConfiguration resource:) Tj ET
+BT /F1 10.5 Tf 54.0 339.0 Td (https://docs.nginx.com/nginx-ingress-controller/configuration/global-) Tj ET
+BT /F1 10.5 Tf 54.0 325.0 Td (configuration/globalconfiguration-resource/) Tj ET
+BT /F1 8 Tf 286.0 28 Td (Page 5) Tj ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 14 0 R >>
+endobj
+xref
+0 16
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000148 00000 n 
+0000000218 00000 n 
+0000000293 00000 n 
+0000000361 00000 n 
+0000002847 00000 n 
+0000002993 00000 n 
+0000006204 00000 n 
+0000006350 00000 n 
+0000009394 00000 n 
+0000009542 00000 n 
+0000012081 00000 n 
+0000012229 00000 n 
+0000014255 00000 n 
+trailer
+<< /Size 16 /Root 1 0 R >>
+startxref
+14403
+%%EOF

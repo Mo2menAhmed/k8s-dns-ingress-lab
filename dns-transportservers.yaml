@@ -1,0 +1,34 @@
+apiVersion: k8s.nginx.org/v1
+kind: TransportServer
+metadata:
+  name: dns-tcp
+  namespace: dns-lab
+spec:
+  listener:
+    name: dns-tcp
+    protocol: TCP
+  upstreams:
+  - name: dns
+    service: coredns
+    port: 53
+  action:
+    pass: dns
+---
+apiVersion: k8s.nginx.org/v1
+kind: TransportServer
+metadata:
+  name: dns-udp
+  namespace: dns-lab
+spec:
+  listener:
+    name: dns-udp
+    protocol: UDP
+  upstreams:
+  - name: dns
+    service: coredns
+    port: 53
+  upstreamParameters:
+    udpRequests: 1
+    udpResponses: 1
+  action:
+    pass: dns
