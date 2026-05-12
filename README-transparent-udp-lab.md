@@ -152,7 +152,7 @@ kubectl logs -n nginx-ingress -l app.kubernetes.io/name=nginx-ingress --tail=200
 
 ```bash
 NGINX_POD=$(kubectl -n nginx-ingress get pod -l app.kubernetes.io/name=nginx-ingress -o jsonpath='{.items[0].metadata.name}')
-kubectl -n nginx-ingress exec "$NGINX_POD" -- sh -c 'nginx -T 2>/dev/null | grep -F "proxy_bind $remote_addr transparent;"'
+kubectl -n nginx-ingress exec "$NGINX_POD" -- sh -c "nginx -T 2>/dev/null | grep -F 'proxy_bind \$remote_addr transparent;'"
 ```
 
 Expected generated config contains:
@@ -168,6 +168,22 @@ From a client inside the lab subnet:
 ```bash
 dig @<NODE_IP> -p 53 app.example.local +short
 dig @<NODE_IP> -p 53 api.example.local +short
+```
+
+Get the node IP and the kind host port mappings:
+
+```bash
+kubectl get node dns-ingress-lab-control-plane -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}'
+docker port dns-ingress-lab-control-plane 53/udp
+docker port dns-ingress-lab-control-plane 53/tcp
+```
+
+From WSL on the same laptop, the kind mapping normally exposes DNS on
+`127.0.0.1:53`:
+
+```bash
+dig @127.0.0.1 -p 53 app.example.local +short +time=2 +tries=1
+dig @127.0.0.1 -p 53 api.example.local +short +time=2 +tries=1
 ```
 
 From the DNS backend pod if it has `tcpdump`:

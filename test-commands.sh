@@ -59,7 +59,7 @@ kubectl logs -n nginx-ingress -l app.kubernetes.io/name=nginx-ingress --tail=200
 echo
 echo "== Verify generated NGINX stream config contains proxy_bind transparent =="
 NGINX_POD="$(kubectl -n nginx-ingress get pod -l app.kubernetes.io/name=nginx-ingress -o jsonpath='{.items[0].metadata.name}')"
-kubectl -n nginx-ingress exec "$NGINX_POD" -- sh -c 'nginx -T 2>/dev/null | grep -F "proxy_bind $remote_addr transparent;"'
+kubectl -n nginx-ingress exec "$NGINX_POD" -- sh -c "nginx -T 2>/dev/null | grep -F 'proxy_bind \$remote_addr transparent;'"
 
 echo
 echo "== Verify node routing rules =="
@@ -86,8 +86,8 @@ MSG
 
 echo
 echo "== DNS test from this shell =="
-dig @"$NODE_IP" -p "$DNS_PORT" app.example.local +short
-dig @"$NODE_IP" -p "$DNS_PORT" api.example.local +short
+dig @"$NODE_IP" -p "$DNS_PORT" app.example.local +short +time=2 +tries=1
+dig @"$NODE_IP" -p "$DNS_PORT" api.example.local +short +time=2 +tries=1
 
 cat <<MSG
 
