@@ -1,0 +1,25 @@
+apiVersion: k8s.nginx.org/v1
+kind: TransportServer
+metadata:
+  name: dns-udp
+  namespace: dns-lab
+spec:
+  ingressClassName: nginx
+  listener:
+    name: dns-udp
+    protocol: UDP
+  upstreams:
+  - name: dns
+    service: coredns
+    port: 53
+  upstreamParameters:
+    udpRequests: 1
+    udpResponses: 1
+  action:
+    pass: dns
+  # LAB ONLY:
+  # Try transparent UDP proxying so the upstream DNS backend can see the
+  # original client source IP. Do not add "proxy_protocol on;" here; UDP does
+  # not use PROXY protocol in the same way as TCP.
+  serverSnippets: |
+    proxy_bind $remote_addr transparent;

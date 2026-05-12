@@ -1,0 +1,196 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: udp-transparent-routing-lab
+  namespace: kube-system
+data:
+  transparent-routing.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # LAB ONLY:
+    # These node-level rules support NGINX stream proxy_bind transparent.
+    # They mark DNS backend UDP responses and route marked packets to the local
+    # routing table so NGINX can intercept the upstream response path.
+    #
+    # This is intentionally broad by default for this local kind lab. Narrow
+    # BACKEND_SOURCE_CIDR to the CoreDNS backend Pod CIDR or exact backend Pod
+    # IP(s) before any serious test.
+
+    ACTION="${1:-${ACTION:-apply}}"
+    MARK="${MARK:-0x56}"
+    TABLE_ID="${TABLE_ID:-100}"
+    RULE_PRIORITY="${RULE_PRIORITY:-1056}"
+    DNS_PORT="${DNS_PORT:-53}"
+    BACKEND_SOURCE_CIDR="${BACKEND_SOURCE_CIDR:-0.0.0.0/0}"
+    DISABLE_RP_FILTER="${DISABLE_RP_FILTER:-true}"
+    COMMENT="udp-transparent-dns-lab"
+    STATE_DIR="/host-run/udp-transparent-dns-lab"
+
+    log() {
+      printf '[udp-transparent-routing-lab] %s\n' "$*"
+    }
+
+    add_mangle_rule() {
+      local chain="$1"
+      if iptables -t mangle -C "$chain" -p udp -s "$BACKEND_SOURCE_CIDR" --sport "$DNS_PORT" \
+        -m comment --comment "$COMMENT" -j MARK --set-mark "$MARK" 2>/dev/null; then
+        log "iptables mangle/$chain rule already exists"
+      else
+        log "adding iptables mangle/$chain mark rule for UDP source port $DNS_PORT from $BACKEND_SOURCE_CIDR"
+        iptables -t mangle -A "$chain" -p udp -s "$BACKEND_SOURCE_CIDR" --sport "$DNS_PORT" \
+          -m comment --comment "$COMMENT" -j MARK --set-mark "$MARK"
+      fi
+    }
+
+    delete_mangle_rule() {
+      local chain="$1"
+      while iptables -t mangle -C "$chain" -p udp -s "$BACKEND_SOURCE_CIDR" --sport "$DNS_PORT" \
+        -m comment --comment "$COMMENT" -j MARK --set-mark "$MARK" 2>/dev/null; do
+        log "removing iptables mangle/$chain mark rule"
+        iptables -t mangle -D "$chain" -p udp -s "$BACKEND_SOURCE_CIDR" --sport "$DNS_PORT" \
+          -m comment --comment "$COMMENT" -j MARK --set-mark "$MARK"
+      done
+    }
+
+    save_and_disable_rp_filter() {
+      [ "$DISABLE_RP_FILTER" = "true" ] || return 0
+      mkdir -p "$STATE_DIR/rp_filter"
+      for path in /proc/sys/net/ipv4/conf/*/rp_filter; do
+        iface="$(basename "$(dirname "$path")")"
+        state_file="$STATE_DIR/rp_filter/$iface"
+        if [ ! -f "$state_file" ]; then
+          cat "$path" > "$state_file"
+        fi
+        log "setting rp_filter=0 for $iface"
+        printf '0' > "$path" || true
+      done
+    }
+
+    restore_rp_filter() {
+      [ -d "$STATE_DIR/rp_filter" ] || return 0
+      for state_file in "$STATE_DIR"/rp_filter/*; do
+        [ -f "$state_file" ] || continue
+        iface="$(basename "$state_file")"
+        target="/proc/sys/net/ipv4/conf/$iface/rp_filter"
+        if [ -f "$target" ]; then
+          log "restoring rp_filter for $iface"
+          cat "$state_file" > "$target" || true
+        fi
+      done
+      rm -rf "$STATE_DIR/rp_filter"
+    }
+
+    apply_rules() {
+      save_and_disable_rp_filter
+      add_mangle_rule PREROUTING
+      log "adding policy rule fwmark $MARK lookup table $TABLE_ID"
+      ip rule add fwmark "$MARK" table "$TABLE_ID" priority "$RULE_PRIORITY" 2>/dev/null || true
+      log "adding local route for marked packets in table $TABLE_ID"
+      ip route replace local 0.0.0.0/0 dev lo table "$TABLE_ID"
+
+      log "current matching iptables rules:"
+      iptables -t mangle -S | grep "$COMMENT" || true
+      log "current matching ip rules:"
+      ip rule show | grep "lookup $TABLE_ID" || true
+      log "current table $TABLE_ID route:"
+      ip route show table "$TABLE_ID" || true
+    }
+
+    cleanup_rules() {
+      delete_mangle_rule PREROUTING
+      log "removing policy rule fwmark $MARK lookup table $TABLE_ID"
+      while ip rule del fwmark "$MARK" table "$TABLE_ID" priority "$RULE_PRIORITY" 2>/dev/null; do
+        true
+      done
+      log "removing local route table $TABLE_ID"
+      ip route flush table "$TABLE_ID" 2>/dev/null || true
+      restore_rp_filter
+    }
+
+    case "$ACTION" in
+      apply)
+        apply_rules
+        log "rules applied; sleeping so the DaemonSet keeps ownership of the node changes"
+        trap 'cleanup_rules; exit 0' TERM INT
+        while true; do sleep 3600; done
+        ;;
+      cleanup)
+        cleanup_rules
+        log "cleanup complete; sleeping so logs can be inspected"
+        while true; do sleep 3600; done
+        ;;
+      *)
+        echo "unknown ACTION: $ACTION" >&2
+        exit 2
+        ;;
+    esac
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: udp-transparent-routing-lab
+  namespace: kube-system
+  labels:
+    app: udp-transparent-routing-lab
+spec:
+  selector:
+    matchLabels:
+      app: udp-transparent-routing-lab
+  template:
+    metadata:
+      labels:
+        app: udp-transparent-routing-lab
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: routing
+        image: nicolaka/netshoot:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - /opt/transparent-routing/transparent-routing.sh
+        - apply
+        env:
+        - name: MARK
+          value: "0x56"
+        - name: TABLE_ID
+          value: "100"
+        - name: RULE_PRIORITY
+          value: "1056"
+        - name: DNS_PORT
+          value: "53"
+        # LAB ONLY default. Prefer narrowing this to the CoreDNS backend Pod
+        # CIDR or exact backend Pod IP/CIDR before testing.
+        - name: BACKEND_SOURCE_CIDR
+          value: "0.0.0.0/0"
+        # Reverse path filtering often breaks transparent proxy return paths.
+        # The script stores previous rp_filter values under host /run and
+        # restores them on cleanup.
+        - name: DISABLE_RP_FILTER
+          value: "true"
+        securityContext:
+          privileged: true
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - /opt/transparent-routing/transparent-routing.sh
+              - cleanup
+        volumeMounts:
+        - name: script
+          mountPath: /opt/transparent-routing
+        - name: host-run
+          mountPath: /host-run
+      volumes:
+      - name: script
+        configMap:
+          name: udp-transparent-routing-lab
+          defaultMode: 0755
+      - name: host-run
+        hostPath:
+          path: /run
+          type: Directory

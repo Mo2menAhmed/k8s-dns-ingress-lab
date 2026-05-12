@@ -1,3 +1,4 @@
 license.jwt
 *.jwt
 __pycache__/
+*.tar.gz

@@ -55,6 +55,19 @@ bash scripts/04-test.sh
 For a customer-style runbook using the same NGINX Plus `TransportServer`
 approach, see `NGINX-PLUS-TRANSPORTSERVER-GUIDE.md`.
 
+## UDP Transparent Proxy Lab
+
+For the lab-only UDP transparent proxying test using:
+
+```nginx
+proxy_bind $remote_addr transparent;
+```
+
+see `README-transparent-udp-lab.md`.
+
+That test is opt-in, affects only the UDP `dns-udp` TransportServer, and should
+not be applied to production.
+
 ## How it Works
 
 1. **kind cluster** exposes WSL/laptop `127.0.0.1:53` TCP/UDP to port `53` inside the kind node container.

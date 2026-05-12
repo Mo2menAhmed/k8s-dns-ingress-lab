@@ -1,0 +1,29 @@
+# LAB ONLY Helm values overlay for testing UDP transparent proxying.
+#
+# Use this as an overlay together with this lab's existing NGINX Plus Ingress
+# values, for example:
+#
+#   helm upgrade nginx-ingress oci://ghcr.io/nginx/charts/nginx-ingress \
+#     --version 2.5.1 \
+#     --namespace nginx-ingress \
+#     -f nginx-plus-dns-values.yaml \
+#     -f values-transparent-lab.yaml
+#
+# This file intentionally does not change:
+# - TCP TransportServer configuration
+# - listener port 53
+# - backend service dns-lab/coredns:53
+
+controller:
+  # Required for TransportServer serverSnippets to be accepted by the F5 NGINX
+  # Ingress Controller.
+  enableSnippets: true
+
+  # The NGINX chart supports container securityContext here. NGINX stream
+  # proxy_bind ... transparent requires the worker process to have permission
+  # for transparent/non-local source binding. NET_RAW is the minimum capability
+  # used by NGINX for this transparent bind behavior on Linux.
+  securityContext:
+    capabilities:
+      add:
+      - NET_RAW
