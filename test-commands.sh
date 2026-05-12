@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# LAB ONLY validation/test helper for UDP transparent proxying in this
+# Validation/test helper for UDP transparent proxying in this
 # k8s-dns-ingress-lab repo.
 # Default behavior is safe: print current state and run server-side dry-run.
 # Set APPLY_CHANGES=true to apply node routing and the UDP TransportServer.
@@ -24,7 +24,7 @@ if [ "$APPLY_CHANGES" != "true" ]; then
 
 Dry-run complete. No changes were applied.
 
-To apply this LAB ONLY test:
+To apply this transparent UDP profile:
 
   APPLY_CHANGES=true NODE_IP=127.0.0.1 ./test-commands.sh
 
@@ -40,7 +40,7 @@ MSG
 fi
 
 echo
-echo "== Applying lab-only node routing DaemonSet =="
+echo "== Applying node routing DaemonSet =="
 kubectl apply -f node-transparent-routing-daemonset.yaml
 kubectl -n kube-system rollout status daemonset/udp-transparent-routing-lab --timeout=180s
 

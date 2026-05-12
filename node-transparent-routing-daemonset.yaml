@@ -8,21 +8,20 @@ data:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # LAB ONLY:
+    # Production-shaped node setup for this lab:
     # These node-level rules support NGINX stream proxy_bind transparent.
     # They mark DNS backend UDP responses and route marked packets to the local
     # routing table so NGINX can intercept the upstream response path.
     #
-    # This is intentionally broad by default for this local kind lab. Narrow
-    # BACKEND_SOURCE_CIDR to the CoreDNS backend Pod CIDR or exact backend Pod
-    # IP(s) before any serious test.
+    # BACKEND_SOURCE_CIDR must be restricted to the backend Pod CIDR or exact
+    # backend Pod IPs. This lab uses the kind node Pod CIDR: 10.244.0.0/24.
 
     ACTION="${1:-${ACTION:-apply}}"
     MARK="${MARK:-0x56}"
     TABLE_ID="${TABLE_ID:-100}"
     RULE_PRIORITY="${RULE_PRIORITY:-1056}"
     DNS_PORT="${DNS_PORT:-53}"
-    BACKEND_SOURCE_CIDR="${BACKEND_SOURCE_CIDR:-0.0.0.0/0}"
+    BACKEND_SOURCE_CIDR="${BACKEND_SOURCE_CIDR:-10.244.0.0/24}"
     DISABLE_RP_FILTER="${DISABLE_RP_FILTER:-true}"
     COMMENT="udp-transparent-dns-lab"
     STATE_DIR="/host-run/udp-transparent-dns-lab"
@@ -147,7 +146,7 @@ spec:
       - operator: Exists
       containers:
       - name: routing
-        image: nicolaka/netshoot:latest
+        image: docker.io/nicolaka/netshoot@sha256:47b907d662d139d1e2f22bfe14f4efca1e3f1feed283572f47c970c780c03b61
         imagePullPolicy: IfNotPresent
         command:
         - /bin/bash
@@ -162,10 +161,10 @@ spec:
           value: "1056"
         - name: DNS_PORT
           value: "53"
-        # LAB ONLY default. Prefer narrowing this to the CoreDNS backend Pod
-        # CIDR or exact backend Pod IP/CIDR before testing.
+        # Restricted to this kind node's Pod CIDR. In a real environment,
+        # replace this with the backend DNS Pod CIDR or exact backend Pod IPs.
         - name: BACKEND_SOURCE_CIDR
-          value: "0.0.0.0/0"
+          value: "10.244.0.0/24"
         # Reverse path filtering often breaks transparent proxy return paths.
         # The script stores previous rp_filter values under host /run and
         # restores them on cleanup.
@@ -173,6 +172,7 @@ spec:
           value: "true"
         securityContext:
           privileged: true
+          runAsUser: 0
         lifecycle:
           preStop:
             exec:

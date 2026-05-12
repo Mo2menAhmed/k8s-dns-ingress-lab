@@ -1,10 +1,13 @@
-# LAB ONLY: UDP Transparent Proxying for DNS TransportServer
+# UDP Transparent Proxying for DNS TransportServer
 
-This is a safe lab-only test plan for UDP transparent proxying with F5 NGINX
+This repo is a local Kubernetes lab for UDP transparent proxying with F5 NGINX
 Ingress Controller / NGINX Plus Ingress Controller.
 
-Do not apply this in production. Do not use it on customer traffic without a
-full routing design, security review, and rollback window.
+The active manifests use a production-shaped hardening profile for this lab:
+minimal Linux capabilities on the controller, no privilege escalation, a pinned
+routing image digest, and backend-source routing narrowed to the current kind
+Pod CIDR. For real customer production, adapt the CIDRs, image policy, node
+lifecycle, and rollback process to the target environment before applying.
 
 ## Goal
 
@@ -44,12 +47,17 @@ This lab does not change:
   - Adds `serverSnippets` with `proxy_bind $remote_addr transparent;`.
   - Does not add `proxy_protocol on;`.
 - `values-transparent-lab.yaml`
-  - Helm values overlay that enables snippets, runs the controller as root for
-    this lab-only transparent proxy test, and adds controller capability
-    `NET_RAW`.
+  - Helm values overlay that enables snippets.
+  - Runs the controller master as root because this image needs effective
+    capabilities for `IP_TRANSPARENT`.
+  - Drops all default capabilities and adds only `CHOWN`, `SETUID`, `SETGID`,
+    `NET_BIND_SERVICE`, and `NET_RAW`.
+  - Sets `allowPrivilegeEscalation: false`.
 - `node-transparent-routing-daemonset.yaml`
-  - Lab-only privileged DaemonSet that applies reversible policy routing and
-    iptables mangle rules on nodes.
+  - Privileged DaemonSet that applies reversible policy routing and iptables
+    mangle rules on nodes.
+  - Pins the routing container by digest.
+  - Restricts backend response marking to the kind Pod CIDR `10.244.0.0/24`.
 - `test-commands.sh`
   - Prints current state, validates, optionally applies, and tests.
 - `rollback-commands.sh`
@@ -76,12 +84,32 @@ Inspect and merge `values-transparent-lab.yaml` with this lab's existing values:
 helm get values nginx-ingress -n nginx-ingress -o yaml
 ```
 
-This lab overlay intentionally runs the controller container as root. In this
-kind/WSL lab, adding `NET_RAW` while the image ran as UID `101` left the
-capability unavailable to NGINX at runtime, and UDP queries failed with:
+This overlay intentionally runs the controller master process as root, but with
+all default capabilities dropped. In this kind/WSL lab, adding `NET_RAW` while
+the image ran as UID `101` left the capability unavailable to NGINX at runtime,
+and UDP queries failed with:
 
 ```text
 setsockopt(IP_TRANSPARENT) failed (1: Operation not permitted)
+```
+
+The applied controller capability set is intentionally small:
+
+```yaml
+controller:
+  securityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+      add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+      - NET_RAW
 ```
 
 Apply the overlay with the existing values file:
@@ -122,16 +150,17 @@ kubectl get pods -n nginx-ingress -o wide
 kubectl apply --dry-run=server -f dns-udp-transparent-transportserver.yaml
 ```
 
-## Apply Lab Routing
+## Apply Node Routing
 
 Review `node-transparent-routing-daemonset.yaml` first.
 
-Important lab defaults:
+Important defaults in this lab:
 
-- marks UDP packets with source port `53`
+- marks UDP packets with source port `53` only from `10.244.0.0/24`
 - routes marked packets through table `100`
 - disables `rp_filter` and stores prior values under host `/run`
-- uses a privileged `nicolaka/netshoot` DaemonSet
+- uses a privileged node DaemonSet because it changes host network rules
+- pins `docker.io/nicolaka/netshoot` by digest
 
 Apply:
 
@@ -147,6 +176,12 @@ ROUTING_POD=$(kubectl -n kube-system get pod -l app=udp-transparent-routing-lab 
 kubectl -n kube-system exec "$ROUTING_POD" -- iptables -t mangle -S
 kubectl -n kube-system exec "$ROUTING_POD" -- ip rule show
 kubectl -n kube-system exec "$ROUTING_POD" -- ip route show table 100
+```
+
+Expected mangle rule:
+
+```text
+-A PREROUTING -s 10.244.0.0/24 -p udp --sport 53 -m comment --comment udp-transparent-dns-lab -j MARK --set-xmark 0x56/0xffffffff
 ```
 
 ## Apply UDP TransportServer
@@ -168,6 +203,22 @@ Expected generated config contains:
 
 ```nginx
 proxy_bind $remote_addr transparent;
+```
+
+Verify the hardened controller capability profile:
+
+```bash
+NGINX_POD=$(kubectl -n nginx-ingress get pod -l app.kubernetes.io/name=nginx-ingress -o jsonpath='{.items[0].metadata.name}')
+kubectl -n nginx-ingress exec "$NGINX_POD" -- sh -c 'id; grep -E "Cap(Prm|Eff|Bnd)|NoNewPrivs|Seccomp" /proc/1/status'
+```
+
+Expected in this lab:
+
+```text
+uid=0(root)
+CapEff: 00000000000024c1
+NoNewPrivs: 1
+Seccomp: 2
 ```
 
 ## Test DNS

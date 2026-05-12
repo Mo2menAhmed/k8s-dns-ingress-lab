@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# LAB ONLY rollback helper.
+# Transparent UDP rollback helper.
 # This does not modify TCP TransportServer resources.
 # This does not change TCP, listener port 53, or backend service dns-lab/coredns:53.
 
@@ -44,15 +44,15 @@ if kubectl -n kube-system get daemonset udp-transparent-routing-lab >/dev/null 2
 fi
 
 echo
-echo "== Deleting lab-only routing DaemonSet and ConfigMap =="
+echo "== Deleting routing DaemonSet and ConfigMap =="
 kubectl delete -f node-transparent-routing-daemonset.yaml --ignore-not-found=true
 
 cat <<'MSG'
 
 == Remove Helm values added only for this test ==
 
-If values-transparent-lab.yaml was added only for this transparent UDP test,
-upgrade the controller again without that overlay, for example:
+If values-transparent-lab.yaml was added only for transparent UDP, upgrade the
+controller again without that overlay, for example:
 
   helm upgrade nginx-ingress oci://ghcr.io/nginx/charts/nginx-ingress \
     --version 2.5.1 \
