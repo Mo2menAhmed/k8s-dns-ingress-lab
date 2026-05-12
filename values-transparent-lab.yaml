@@ -19,17 +19,18 @@ controller:
   # Ingress Controller.
   enableSnippets: true
 
-  # Production-shaped minimum for this lab:
+  # Production-shaped minimum for this lab with the stock NGINX Plus Ingress
+  # image:
   # The NGINX Plus Ingress image normally runs as UID 101. In this lab, that
   # left NET_RAW in the container bounding set but not in the effective set, so
   # NGINX logged:
   #
   #   setsockopt(IP_TRANSPARENT) failed (1: Operation not permitted)
   #
-  # Run the controller master process as root for this transparent UDP test so
-  # NGINX can apply proxy_bind ... transparent and pass CAP_NET_RAW to worker
-  # processes. Drop every default capability and add back only what this DNS
-  # listener and NGINX startup path need:
+  # Run the controller and NGINX master processes as root so NGINX can apply
+  # proxy_bind ... transparent and pass CAP_NET_RAW to non-root worker
+  # processes. The workers run as UID 101. Drop every default capability and add
+  # back only what this DNS listener and NGINX startup path need:
   # - CHOWN: NGINX startup chowns temp directories
   # - SETGID/SETUID: NGINX master can start workers as nginx
   # - NET_BIND_SERVICE: bind TCP/UDP port 53

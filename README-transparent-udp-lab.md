@@ -9,6 +9,12 @@ routing image digest, and backend-source routing narrowed to the current kind
 Pod CIDR. For real customer production, adapt the CIDRs, image policy, node
 lifecycle, and rollback process to the target environment before applying.
 
+Important: with the stock NGINX Plus Ingress image used here, strict non-root
+container execution was tested and does not work for UDP transparent proxying.
+The controller and NGINX master process must run as root so NGINX can make
+`CAP_NET_RAW` effective for `IP_TRANSPARENT`. NGINX worker processes still drop
+to UID `101`.
+
 ## Goal
 
 Test whether a UDP DNS backend can receive traffic with the original client
@@ -48,8 +54,8 @@ This lab does not change:
   - Does not add `proxy_protocol on;`.
 - `values-transparent-lab.yaml`
   - Helm values overlay that enables snippets.
-  - Runs the controller master as root because this image needs effective
-    capabilities for `IP_TRANSPARENT`.
+  - Runs the controller and NGINX master as root because this image needs
+    effective capabilities for `IP_TRANSPARENT`.
   - Drops all default capabilities and adds only `CHOWN`, `SETUID`, `SETGID`,
     `NET_BIND_SERVICE`, and `NET_RAW`.
   - Sets `allowPrivilegeEscalation: false`.
@@ -111,6 +117,26 @@ controller:
       - NET_BIND_SERVICE
       - NET_RAW
 ```
+
+Strict non-root was tested with `runAsUser: 101`, `runAsNonRoot: true`,
+`NET_BIND_SERVICE`, and `NET_RAW`. The pod started, but Linux exposed only
+`NET_BIND_SERVICE` as effective capability:
+
+```text
+CapEff: 0000000000000400
+CapBnd: 0000000000002400
+```
+
+UDP transparent proxying then failed with:
+
+```text
+setsockopt(IP_TRANSPARENT) failed (1: Operation not permitted)
+```
+
+For a strict non-root production requirement, use a vendor-supported image or
+custom image/runtime design that can make `CAP_NET_RAW` effective for the NGINX
+process without running the controller master as root. The standard Kubernetes
+container `capabilities.add` field was not enough with this image in this lab.
 
 Apply the overlay with the existing values file:
 
@@ -219,6 +245,27 @@ uid=0(root)
 CapEff: 00000000000024c1
 NoNewPrivs: 1
 Seccomp: 2
+```
+
+Verify that NGINX workers are non-root and hold only `CAP_NET_RAW`:
+
+```bash
+NGINX_POD=$(kubectl -n nginx-ingress get pod -l app.kubernetes.io/name=nginx-ingress -o jsonpath='{.items[0].metadata.name}')
+kubectl -n nginx-ingress exec "$NGINX_POD" -- sh -c '
+for d in /proc/[0-9]*; do
+  cmd=$(tr "\0" " " < "$d/cmdline" 2>/dev/null || true)
+  case "$cmd" in
+    "nginx: worker"*) echo "$d"; grep -E "Uid|Gid|CapEff" "$d/status"; break ;;
+  esac
+done'
+```
+
+Expected worker profile:
+
+```text
+Uid: 101 101 101 101
+Gid: 101 101 101 101
+CapEff: 0000000000002000
 ```
 
 ## Test DNS
