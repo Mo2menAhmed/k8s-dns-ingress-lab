@@ -19,11 +19,19 @@ controller:
   # Ingress Controller.
   enableSnippets: true
 
-  # The NGINX chart supports container securityContext here. NGINX stream
-  # proxy_bind ... transparent requires the worker process to have permission
-  # for transparent/non-local source binding. NET_RAW is the minimum capability
-  # used by NGINX for this transparent bind behavior on Linux.
+  # LAB ONLY:
+  # The NGINX Plus Ingress image normally runs as UID 101. In this lab, that
+  # left NET_RAW in the container bounding set but not in the effective set, so
+  # NGINX logged:
+  #
+  #   setsockopt(IP_TRANSPARENT) failed (1: Operation not permitted)
+  #
+  # Run the controller as root for this transparent UDP test so NGINX can apply
+  # proxy_bind ... transparent and pass CAP_NET_RAW to worker processes.
   securityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: true
     capabilities:
       add:
       - NET_RAW

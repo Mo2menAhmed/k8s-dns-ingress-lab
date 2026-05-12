@@ -44,7 +44,8 @@ This lab does not change:
   - Adds `serverSnippets` with `proxy_bind $remote_addr transparent;`.
   - Does not add `proxy_protocol on;`.
 - `values-transparent-lab.yaml`
-  - Helm values overlay that enables snippets and adds controller capability
+  - Helm values overlay that enables snippets, runs the controller as root for
+    this lab-only transparent proxy test, and adds controller capability
     `NET_RAW`.
 - `node-transparent-routing-daemonset.yaml`
   - Lab-only privileged DaemonSet that applies reversible policy routing and
@@ -73,6 +74,14 @@ Inspect and merge `values-transparent-lab.yaml` with this lab's existing values:
 
 ```bash
 helm get values nginx-ingress -n nginx-ingress -o yaml
+```
+
+This lab overlay intentionally runs the controller container as root. In this
+kind/WSL lab, adding `NET_RAW` while the image ran as UID `101` left the
+capability unavailable to NGINX at runtime, and UDP queries failed with:
+
+```text
+setsockopt(IP_TRANSPARENT) failed (1: Operation not permitted)
 ```
 
 Apply the overlay with the existing values file:
@@ -184,6 +193,23 @@ From WSL on the same laptop, the kind mapping normally exposes DNS on
 ```bash
 dig @127.0.0.1 -p 53 app.example.local +short +time=2 +tries=1
 dig @127.0.0.1 -p 53 api.example.local +short +time=2 +tries=1
+```
+
+In this kind/WSL path, the client IP seen inside the kind node is normally the
+Docker bridge peer, for example `172.19.0.1`.
+
+Test from an in-cluster client against the node IP:
+
+```bash
+NODE_IP=$(kubectl get node dns-ingress-lab-control-plane -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+kubectl run dns-client-nodeip --rm -it --restart=Never --image=nicolaka/netshoot -- \
+  dig @"$NODE_IP" -p 53 app.example.local +short +time=2 +tries=1
+```
+
+Check what CoreDNS received:
+
+```bash
+kubectl -n dns-lab logs -l app=coredns --tail=20
 ```
 
 From the DNS backend pod if it has `tcpdump`:
